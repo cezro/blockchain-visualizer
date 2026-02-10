@@ -47,8 +47,8 @@ function ChainLink({
     const points = [new Vector3(startX, 0, 0), new Vector3(endX, 0, 0)];
     const geometry = new BufferGeometry().setFromPoints(points);
     const material = valid
-      ? new LineBasicMaterial({ color: "#10b981" })
-      : new LineDashedMaterial({ color: "#ef4444", dashSize: 0.15, gapSize: 0.12 });
+      ? new LineBasicMaterial({ color: "#9ba387" })
+      : new LineDashedMaterial({ color: "#c75c5c", dashSize: 0.15, gapSize: 0.12 });
     return new Line(geometry, material);
   }, [startX, endX, valid]);
 
@@ -66,28 +66,28 @@ function ChainLink({
         style={{ pointerEvents: "none", userSelect: "none", minWidth: 140 }}
       >
         <div
-          className={`rounded border px-2 py-1 font-mono text-[10px] shadow-lg ${
+          className={`border px-2 py-1 font-mono text-[10px] shadow-lg ${
             valid
-              ? "border-emerald-600/60 bg-slate-900/95 text-emerald-400"
-              : "border-red-500/60 bg-slate-900/95 text-red-300"
+              ? "border-[#7a9b6e] bg-[#252a33] text-[#9ba387]"
+              : "border-[#c75c5c] bg-[#252a33] text-[#c75c5c]"
           }`}
         >
           {valid ? (
             <span title={prevBlockHash}>
               Hash link ✓<br />
-              <span className="text-slate-500">prevHash = hash</span>
+              <span className="text-[#8b949e]">prevHash = hash</span>
             </span>
           ) : (
             <span>
-              <span className="font-semibold">Hash mismatch</span>
+              <span className="font-semibold uppercase">Hash mismatch</span>
               <div className="mt-0.5 grid gap-0.5 text-[9px]">
-                <div className="text-slate-400">
-                  Block {fromIndex} hash: <span className="text-slate-300">{prevBlockHash.slice(0, HASH_LABEL_LEN)}…</span>
+                <div className="text-[#8b949e]">
+                  Block {fromIndex} hash: <span className="text-[#e6edf3]">{prevBlockHash.slice(0, HASH_LABEL_LEN)}…</span>
                 </div>
-                <div className="text-slate-400">
-                  Block {toIndex} prevHash: <span className="text-amber-300">{nextBlockPrevHash.slice(0, HASH_LABEL_LEN)}…</span>
+                <div className="text-[#8b949e]">
+                  Block {toIndex} prevHash: <span className="text-[#c9a227]">{nextBlockPrevHash.slice(0, HASH_LABEL_LEN)}…</span>
                 </div>
-                <div className="text-red-400">≠ no link</div>
+                <div className="text-[#c75c5c]">≠ no link</div>
               </div>
             </span>
           )}
@@ -114,7 +114,7 @@ function BlockMesh({
   const [hovered, setHovered] = useState(false);
   useCursor(hovered);
   const hashMismatch = Block.fromBlockData(block).calculateHash() !== block.hash;
-  const color = hashMismatch ? "#ef4444" : hovered ? "#34d399" : "#10b981";
+  const color = hashMismatch ? "#c75c5c" : hovered ? "#b5c49a" : "#9ba387";
 
   const x = getBlockCenterX(index, total);
   return (
@@ -134,7 +134,7 @@ function BlockMesh({
         receiveShadow
       >
         <boxGeometry args={[1.4, 1, 0.8]} />
-        <meshStandardMaterial color={color} emissive={selected ? "#064e3b" : undefined} metalness={0.2} roughness={0.6} />
+        <meshStandardMaterial color={color} emissive={selected ? "#3d4552" : "#000000"} metalness={0.2} roughness={0.6} />
       </mesh>
       <Html
         position={[0, 0.7, 0]}
@@ -142,7 +142,7 @@ function BlockMesh({
         distanceFactor={6}
         style={{ pointerEvents: "none", userSelect: "none", whiteSpace: "nowrap" }}
       >
-        <span className="rounded bg-slate-900/95 px-2 py-0.5 font-mono text-xs font-semibold text-emerald-400 shadow-lg">
+        <span className="rounded border border-[#3d4552] bg-[#252a33] px-2 py-0.5 font-mono text-xs font-semibold uppercase tracking-wider text-[#9ba387] shadow-lg">
           Block {block.index}
         </span>
       </Html>
@@ -153,12 +153,12 @@ function BlockMesh({
           distanceFactor={5}
           style={{ pointerEvents: "none", maxWidth: 280 }}
         >
-          <div className="rounded-lg border border-slate-600 bg-slate-900/95 p-3 font-mono text-xs text-slate-200 shadow-xl">
-            <div className="mb-1 font-semibold text-emerald-400">Block {block.index}</div>
-            <div className="space-y-0.5 text-slate-400">
-              <div><span className="text-slate-500">Data:</span> {block.data}</div>
-              <div><span className="text-slate-500">Nonce:</span> {block.nonce}</div>
-              <div className="break-all"><span className="text-slate-500">Hash:</span> {block.hash.slice(0, 16)}...</div>
+          <div className="rounded border border-[#3d4552] bg-[#252a33] p-3 font-mono text-xs text-[#e6edf3] shadow-xl">
+            <div className="mb-1 font-semibold uppercase tracking-wider text-[#9ba387]">Block {block.index}</div>
+            <div className="space-y-0.5 text-[#8b949e]">
+              <div><span className="text-[#8b949e]">Data:</span> {block.data}</div>
+              <div><span className="text-[#8b949e]">Nonce:</span> {block.nonce}</div>
+              <div className="break-all"><span className="text-[#8b949e]">Hash:</span> {block.hash.slice(0, 16)}...</div>
             </div>
           </div>
         </Html>
@@ -180,8 +180,8 @@ export function BlockChain3D({
 }) {
   return (
     <div
-      className={`w-full overflow-hidden bg-slate-950 ${
-        fullscreen ? "h-full min-h-0" : "h-[480px] rounded-xl border border-slate-700"
+      className={`w-full overflow-hidden bg-[#0f1318] ${
+        fullscreen ? "h-full min-h-0" : "h-[480px] border border-[#3d4552]"
       }`}
     >
       <Canvas

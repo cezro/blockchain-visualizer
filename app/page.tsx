@@ -10,7 +10,7 @@ import { HASH_PREVIEW_LEN, MAX_DIFFICULTY, MINING_BATCH_SIZE } from "@/lib/block
 const BlockChain3D = dynamic(() => import("@/app/BlockChain3D").then((m) => ({ default: m.BlockChain3D })), {
   ssr: false,
   loading: () => (
-    <div className="flex h-[480px] w-full items-center justify-center rounded-xl border border-slate-700 bg-slate-950 text-slate-500">
+    <div className="flex h-[480px] w-full items-center justify-center border border-[var(--hud-border)] bg-[var(--hud-bg)] text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">
       Loading 3D view…
     </div>
   ),
@@ -171,13 +171,13 @@ export default function Home() {
   return (
     <>
       {is3DFullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
+        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--hud-bg)]">
           <div className="absolute right-4 top-4 z-10">
             <button
               type="button"
               onClick={() => setIs3DFullscreen(false)}
               title="Exit fullscreen"
-              className="rounded-lg border border-slate-600 bg-slate-800/90 p-2 text-slate-200 shadow-lg hover:bg-slate-700 hover:text-white"
+              className="hud-btn p-2 text-[var(--hud-accent)] hover:bg-[var(--hud-panel-hover)]"
             >
               <Minimize2 className="h-5 w-5" aria-hidden />
             </button>
@@ -192,50 +192,45 @@ export default function Home() {
           </div>
         </div>
       )}
-      <div className="min-h-screen bg-slate-950 text-slate-100 font-(--font-geist-sans)">
+      <div className="min-h-screen bg-[var(--hud-bg)] text-[var(--hud-text)] font-(--font-geist-sans)">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <header className="mb-8 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-emerald-400">
+        <header className="hud-section mb-6 px-5 py-4">
+          <h1 className="text-2xl font-bold uppercase tracking-widest text-[var(--hud-accent-bright)]">
             Blockchain Visualizer
           </h1>
-          <p className="mt-2 text-slate-400">
-            See blocks, mine new ones, and watch validation in real time.
+          <p className="mt-1 text-sm text-[var(--hud-text-muted)] uppercase tracking-wider">
+            Mine blocks · Validate chain · Tamper demo
           </p>
         </header>
 
-        {/* Validation indicator */}
-        <section
-          className={`mb-8 rounded-xl border-2 px-6 py-4 text-center text-lg font-semibold ${
-            valid
-              ? "border-emerald-500/60 bg-emerald-500/10 text-emerald-400"
-              : "border-red-500/60 bg-red-500/10 text-red-400"
-          }`}
-        >
-          {valid ? "Chain Valid" : "Chain Invalid"}
+        {/* Validation indicator - section has fixed className to avoid hydration mismatch */}
+        <section className="hud-panel mb-6 px-6 py-5 text-center text-sm font-semibold uppercase tracking-wider">
+          <span
+            role="status"
+            className={valid ? "text-[var(--hud-valid)]" : "text-[var(--hud-invalid)]"}
+          >
+            {valid ? "Chain Valid" : "Chain Invalid"}
+          </span>
         </section>
 
         {/* Difficulty: 1–4 buttons + optional 5–10 input */}
-        <section className="mb-6 flex flex-wrap items-center gap-3">
-          <span className="text-slate-400">Difficulty (leading zeros):</span>
-          <div className="flex gap-2">
+        <section className="hud-section mb-6 flex flex-wrap items-center gap-3 px-5 py-4">
+          <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Difficulty (leading zeros):</span>
+          <div className="flex gap-1">
             {([1, 2, 3, 4] as const).map((d) => (
               <button
                 key={d}
                 type="button"
                 onClick={() => handleDifficultyButton(d)}
-                className={`rounded-lg border px-4 py-2 text-sm font-medium transition ${
-                  difficulty === d
-                    ? "border-emerald-500 bg-emerald-500/20 text-emerald-400"
-                    : "border-slate-600 bg-slate-800/50 text-slate-300 hover:border-slate-500"
-                }`}
+                className={`hud-btn px-4 py-2 text-sm ${difficulty === d ? "hud-btn-active" : ""}`}
               >
                 {d}
               </button>
             ))}
           </div>
-          <span className="text-slate-500">or</span>
-          <label className="flex items-center gap-2 text-slate-400">
-            <span className="text-sm">5–10:</span>
+          <span className="text-[var(--hud-text-muted)]">|</span>
+          <label className="flex items-center gap-2 text-[var(--hud-text-muted)]">
+            <span className="text-xs uppercase">5–10:</span>
             <input
               type="number"
               min={5}
@@ -243,34 +238,34 @@ export default function Home() {
               value={difficulty >= 5 ? difficulty : ""}
               onChange={handleDifficultyInput}
               placeholder="5–10"
-              className="w-16 rounded-lg border border-slate-600 bg-slate-800/80 px-3 py-2 text-center text-slate-100 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="hud-input w-16 px-3 py-2 text-center text-sm [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             />
           </label>
-          <span className="text-xs text-slate-500">(higher = slower mining)</span>
+          <span className="text-xs text-[var(--hud-text-muted)]">(higher = slower)</span>
         </section>
 
         {/* Mining controls */}
-        <section className="mb-8 flex flex-wrap items-end gap-3">
+        <section className="hud-section mb-6 flex flex-wrap items-end gap-3 px-5 py-4">
           <label className="flex flex-1 min-w-[200px] flex-col gap-1">
-            <span className="text-sm text-slate-400">Block data</span>
+            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Block data</span>
             <input
               type="text"
               value={blockDataInput}
               onChange={(e) => setBlockDataInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && startMining()}
               placeholder="e.g. Alice pays Bob 10"
-              className="rounded-lg border border-slate-600 bg-slate-800/80 px-4 py-2.5 text-slate-100 placeholder-slate-500 focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500"
+              className="hud-input px-4 py-2.5 text-sm"
               disabled={isMining}
             />
           </label>
           <button
             onClick={startMining}
             disabled={isMining}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2.5 font-medium text-white transition hover:bg-emerald-500 disabled:opacity-60"
+            className="hud-btn flex items-center gap-2 border-[var(--hud-accent)] bg-[var(--hud-panel-hover)] px-5 py-2.5 text-sm text-[var(--hud-accent-bright)] disabled:opacity-50"
           >
             {isMining ? (
               <>
-                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--hud-accent)] border-t-transparent" />
                 Mining...
               </>
             ) : (
@@ -278,14 +273,12 @@ export default function Home() {
             )}
           </button>
           {miningTimeMs != null && !isMining && (
-            <span className="text-sm text-emerald-400">
-              Mined in {formatTime(miningTimeMs)}
-            </span>
+            <span className="text-xs text-[var(--hud-valid)]">Mined in {formatTime(miningTimeMs)}</span>
           )}
           <button
             onClick={autoMine}
             disabled={isMining || autoMineProgress != null}
-            className="rounded-lg border border-slate-500 bg-slate-800/50 px-4 py-2.5 text-sm font-medium text-slate-200 hover:bg-slate-700/50 disabled:opacity-50"
+            className="hud-btn px-4 py-2.5 text-sm disabled:opacity-50"
           >
             {autoMineProgress != null
               ? `Auto-mining ${autoMineProgress}/5...`
@@ -293,46 +286,40 @@ export default function Home() {
           </button>
           <button
             onClick={resetChain}
-            className="rounded-lg border border-slate-600 px-4 py-2.5 text-sm text-slate-400 hover:bg-slate-800 hover:text-slate-200"
+            className="hud-btn px-4 py-2.5 text-sm text-[var(--hud-text-muted)]"
           >
             Reset chain
           </button>
         </section>
 
         {/* View toggle: Chain vs Ledger + hash display */}
-        <section className="mb-4 flex flex-wrap items-center gap-4">
-          <div className="flex gap-2">
+        <section className="hud-section mb-4 flex flex-wrap items-center gap-4 px-5 py-3">
+          <div className="flex gap-1">
             <button
               onClick={() => setView("chain")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                view === "chain" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200"
-              }`}
+              className={`hud-btn px-3 py-1.5 text-xs ${view === "chain" ? "hud-btn-active" : ""}`}
             >
               Block chain
             </button>
             <button
               onClick={() => setView("ledger")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                view === "ledger" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200"
-              }`}
+              className={`hud-btn px-3 py-1.5 text-xs ${view === "ledger" ? "hud-btn-active" : ""}`}
             >
               Transaction ledger
             </button>
             <button
               onClick={() => setView("3d")}
-              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
-                view === "3d" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200"
-              }`}
+              className={`hud-btn px-3 py-1.5 text-xs ${view === "3d" ? "hud-btn-active" : ""}`}
             >
               3D view
             </button>
           </div>
-          <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
+          <label className="flex cursor-pointer items-center gap-2 text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">
             <input
               type="checkbox"
               checked={showFullHashes}
               onChange={(e) => setShowFullHashes(e.target.checked)}
-              className="rounded border-slate-600 bg-slate-800 text-emerald-500 focus:ring-emerald-500"
+              className="border-[var(--hud-border)] bg-[var(--hud-frame)] text-[var(--hud-accent)] focus:ring-[var(--hud-accent)]"
             />
             Show full hashes
           </label>
@@ -340,33 +327,29 @@ export default function Home() {
 
         {/* Sort, filter, and layout (chain view only) */}
         {view === "chain" && (
-          <section className="mb-4 flex flex-wrap items-center gap-4 rounded-lg border border-slate-700/60 bg-slate-800/30 px-4 py-3">
-            <span className="text-sm text-slate-500">Sort:</span>
+          <section className="hud-panel mb-4 flex flex-wrap items-center gap-4 px-4 py-3">
+            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Sort:</span>
             <div className="flex gap-1">
               {(["index", "timestamp", "nonce"] as const).map((s) => (
                 <button
                   key={s}
                   type="button"
                   onClick={() => setSortBy(s)}
-                  className={`rounded px-2.5 py-1 text-sm capitalize ${
-                    sortBy === s ? "bg-slate-600 text-white" : "text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-                  }`}
+                  className={`hud-btn px-2.5 py-1 text-xs ${sortBy === s ? "hud-btn-active" : ""}`}
                 >
                   {s}
                 </button>
               ))}
             </div>
-            <span className="text-slate-600">|</span>
-            <span className="text-sm text-slate-500">Filter:</span>
+            <span className="text-[var(--hud-border)]">|</span>
+            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Filter:</span>
             <div className="flex gap-1">
               {(["all", "valid", "invalid"] as const).map((f) => (
                 <button
                   key={f}
                   type="button"
                   onClick={() => setFilterBy(f)}
-                  className={`rounded px-2.5 py-1 text-sm capitalize ${
-                    filterBy === f ? "bg-slate-600 text-white" : "text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-                  }`}
+                  className={`hud-btn px-2.5 py-1 text-xs ${filterBy === f ? "hud-btn-active" : ""}`}
                 >
                   {f}
                 </button>
@@ -377,19 +360,17 @@ export default function Home() {
               placeholder="Search block data..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="w-40 rounded border border-slate-600 bg-slate-800/80 px-2 py-1 text-sm text-slate-200 placeholder-slate-500 focus:border-emerald-500 focus:outline-none"
+              className="hud-input w-40 px-2 py-1 text-xs"
             />
-            <span className="text-slate-600">|</span>
-            <span className="text-sm text-slate-500">View:</span>
+            <span className="text-[var(--hud-border)]">|</span>
+            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">View:</span>
             <div className="flex gap-1">
               {(["list", "grid", "compact"] as const).map((l) => (
                 <button
                   key={l}
                   type="button"
                   onClick={() => setChainLayout(l)}
-                  className={`rounded px-2.5 py-1 text-sm capitalize ${
-                    chainLayout === l ? "bg-slate-600 text-white" : "text-slate-400 hover:bg-slate-700 hover:text-slate-200"
-                  }`}
+                  className={`hud-btn px-2.5 py-1 text-xs ${chainLayout === l ? "hud-btn-active" : ""}`}
                 >
                   {l}
                 </button>
@@ -399,11 +380,11 @@ export default function Home() {
         )}
 
         {view === "ledger" ? (
-          <section className="rounded-xl border border-slate-700 bg-slate-900/50 p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
+          <section className="hud-section p-5">
+            <h2 className="mb-4 border-b border-[var(--hud-border)] pb-2 text-xs font-semibold uppercase tracking-widest text-[var(--hud-text-muted)]">
               Ledger
             </h2>
-            <ul className="space-y-1.5 font-mono text-sm">
+            <ul className="space-y-1.5 font-mono text-sm text-[var(--hud-text)]">
               {chain.map((b) => (
                 <li key={b.index}>
                   Block {b.index}: {b.data}
@@ -412,40 +393,42 @@ export default function Home() {
             </ul>
           </section>
         ) : view === "3d" ? (
-          <section>
-            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
-              <p className="text-sm text-slate-500">Drag to rotate, scroll to zoom. Click a block to see details.</p>
+          <section className="hud-section overflow-hidden px-0 py-0">
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2 border-b-2 border-[var(--hud-border)] px-5 py-3">
+              <p className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Drag to rotate · Scroll to zoom · Click block for details</p>
               <button
                 type="button"
                 onClick={() => setIs3DFullscreen(true)}
                 title="Fullscreen"
-                className="rounded-lg border border-slate-600 bg-slate-800/80 p-1.5 text-slate-300 hover:bg-slate-700 hover:text-white"
+                className="hud-btn p-1.5 text-[var(--hud-accent)]"
               >
                 <Maximize2 className="h-4 w-4" aria-hidden />
               </button>
             </div>
             {!is3DFullscreen && (
-              <BlockChain3D
-                chain={chain}
-                selectedIndex={selected3DBlock}
-                onSelectBlock={setSelected3DBlock}
-              />
+              <div className="p-2">
+                <BlockChain3D
+                  chain={chain}
+                  selectedIndex={selected3DBlock}
+                  onSelectBlock={setSelected3DBlock}
+                />
+              </div>
             )}
           </section>
         ) : (
           <>
             {/* Block chain */}
             <div
-              className={
+              className={`hud-section p-5 ${
                 chainLayout === "list"
-                  ? "space-y-6"
+                  ? "space-y-4"
                   : chainLayout === "grid"
                     ? "grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3"
                     : "flex flex-col gap-2"
-              }
+              }`}
             >
               {filteredAndSortedChain.length === 0 ? (
-              <p className="rounded-xl border border-slate-700 bg-slate-800/30 py-8 text-center text-slate-500">
+              <p className="hud-panel py-8 text-center text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">
                 No blocks match the current filter or search.
               </p>
             ) : (
@@ -464,9 +447,9 @@ export default function Home() {
 
             {/* Mining placeholder */}
             {isMining && (
-              <div className="mt-6 flex items-center justify-center gap-3 rounded-xl border border-dashed border-slate-600 bg-slate-800/30 py-12">
-                <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-emerald-400 border-t-transparent" />
-                <span className="text-slate-400">Mining block...</span>
+              <div className="hud-panel mt-6 flex items-center justify-center gap-3 border-dashed py-12">
+                <span className="inline-block h-6 w-6 animate-spin rounded-full border-2 border-[var(--hud-accent)] border-t-transparent" />
+                <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Mining block...</span>
               </div>
             )}
           </>
@@ -536,18 +519,18 @@ function BlockCard({
 
   return (
     <div
-      className={`rounded-xl border-2 bg-slate-800/60 ${
-        hashMismatch ? "border-red-500/70" : linkValid ? "border-slate-600" : "border-amber-500/70"
+      className={`hud-panel ${hashMismatch ? "hud-panel-invalid" : linkValid ? "hud-panel-valid" : ""} ${
+        !linkValid && !hashMismatch ? "border-l-[var(--hud-warn)]" : ""
       } ${isCompact ? "p-3" : "p-5"}`}
     >
       <div className={`flex items-center justify-between ${isCompact ? "mb-1.5" : "mb-3"}`}>
-        <span className={isCompact ? "text-sm font-semibold text-emerald-400" : "text-lg font-semibold text-emerald-400"}>
+        <span className={`font-semibold uppercase tracking-wider text-[var(--hud-accent-bright)] ${isCompact ? "text-sm" : "text-lg"}`}>
           Block {block.index}
         </span>
         {(previousHash !== null || hashMismatch) && (
           <span
-            className={`flex items-center gap-1 text-xs ${
-              hashMismatch ? "text-red-400" : linkValid ? "text-emerald-400" : "text-amber-400"
+            className={`flex items-center gap-1 text-xs uppercase ${
+              hashMismatch ? "text-[var(--hud-invalid)]" : linkValid ? "text-[var(--hud-valid)]" : "text-[var(--hud-warn)]"
             }`}
           >
             {hashMismatch ? "✗ Content invalid" : linkValid ? "✓ Link OK" : "✗ Link broken"}
@@ -556,8 +539,8 @@ function BlockCard({
       </div>
       {isCompact ? (
         <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
-          <span className="text-slate-500">Data:</span>
-          <span className="text-slate-300">
+          <span className="text-[var(--hud-text-muted)]">Data:</span>
+          <span className="text-[var(--hud-text)]">
             {editing ? (
               <span className="flex items-center gap-1">
                 <input
@@ -565,35 +548,35 @@ function BlockCard({
                   value={editData}
                   onChange={(e) => setEditData(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                  className="w-32 rounded border border-slate-600 bg-slate-900 px-1.5 py-0.5 text-slate-100"
+                  className="hud-input w-32 px-1.5 py-0.5"
                   autoFocus
                 />
-                <button onClick={saveEdit} className="text-emerald-400 hover:underline">Save</button>
-                <button onClick={cancelEdit} className="text-slate-500 hover:underline">Cancel</button>
+                <button onClick={saveEdit} className="text-[var(--hud-accent)] hover:underline">Save</button>
+                <button onClick={cancelEdit} className="text-[var(--hud-text-muted)] hover:underline">Cancel</button>
               </span>
             ) : (
               <>
                 {block.data}
-                <button onClick={startEditing} className="ml-1 text-slate-500 hover:text-emerald-400">Edit</button>
+                <button onClick={startEditing} className="ml-1 text-[var(--hud-text-muted)] hover:text-[var(--hud-accent)]">Edit</button>
               </>
             )}
           </span>
-          <span className="text-slate-500">Nonce:</span>
-          <span className="text-slate-300">{block.nonce}</span>
-          <span className="text-slate-500">Hash:</span>
-          <span className="text-slate-400" title={block.hash}>{showFullHashes ? block.hash : hashPreview(block.hash)}</span>
+          <span className="text-[var(--hud-text-muted)]">Nonce:</span>
+          <span className="text-[var(--hud-text)]">{block.nonce}</span>
+          <span className="text-[var(--hud-text-muted)]">Hash:</span>
+          <span className="text-[var(--hud-accent)]" title={block.hash}>{showFullHashes ? block.hash : hashPreview(block.hash)}</span>
         </div>
       ) : (
       <dl className="grid gap-2 font-mono text-sm">
         <div className="flex flex-wrap gap-2">
-          <dt className="text-slate-500">Timestamp:</dt>
-          <dd className="flex flex-1 items-center gap-2 text-slate-300">
+          <dt className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Timestamp:</dt>
+          <dd className="flex flex-1 items-center gap-2 text-[var(--hud-text)]">
             {editing ? (
               <input
                 type="number"
                 value={editTimestamp}
                 onChange={(e) => { const v = e.target.valueAsNumber; setEditTimestamp(Number.isFinite(v) ? v : block.timestamp); }}
-                className="w-40 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
+                className="hud-input w-40 px-2 py-1"
               />
             ) : (
               new Date(block.timestamp).toISOString().replace("T", " ").replace("Z", " UTC")
@@ -601,14 +584,14 @@ function BlockCard({
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
-          <dt className="text-slate-500">Data:</dt>
-          <dd className="flex flex-1 items-center gap-2 text-slate-300">
+          <dt className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Data:</dt>
+          <dd className="flex flex-1 items-center gap-2 text-[var(--hud-text)]">
             {editing ? (
               <input
                 type="text"
                 value={editData}
                 onChange={(e) => setEditData(e.target.value)}
-                className="flex-1 min-w-0 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
+                className="hud-input flex-1 min-w-0 px-2 py-1"
               />
             ) : (
               block.data
@@ -616,14 +599,14 @@ function BlockCard({
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
-          <dt className="text-slate-500">Previous hash:</dt>
-          <dd className="flex flex-1 items-center gap-2 text-slate-400">
+          <dt className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Previous hash:</dt>
+          <dd className="flex flex-1 items-center gap-2 text-[var(--hud-accent)]">
             {editing ? (
               <input
                 type="text"
                 value={editPreviousHash}
                 onChange={(e) => setEditPreviousHash(e.target.value)}
-                className="flex-1 min-w-0 rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-slate-100"
+                className="hud-input flex-1 min-w-0 px-2 py-1 font-mono"
               />
             ) : (
               <span
@@ -634,7 +617,7 @@ function BlockCard({
               >
                 {showFullHashes ? block.previousHash : hashPreview(block.previousHash)}
                 {hoveredHash === "prev" && !showFullHashes && (
-                  <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-slate-600 bg-slate-800 px-2 py-1.5 font-mono text-xs text-slate-200 shadow-lg">
+                  <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-[var(--hud-border)] bg-[var(--hud-panel)] px-2 py-1.5 font-mono text-xs text-[var(--hud-text)] shadow-lg">
                     {block.previousHash}
                   </span>
                 )}
@@ -643,15 +626,15 @@ function BlockCard({
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
-          <dt className="text-slate-500">Nonce:</dt>
-          <dd className="flex flex-1 items-center gap-2 text-slate-300">
+          <dt className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Nonce:</dt>
+          <dd className="flex flex-1 items-center gap-2 text-[var(--hud-text)]">
             {editing ? (
               <input
                 type="number"
                 min={0}
                 value={editNonce}
                 onChange={(e) => { const v = e.target.valueAsNumber; setEditNonce(Number.isFinite(v) && v >= 0 ? Math.floor(v) : block.nonce); }}
-                className="w-28 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
+                className="hud-input w-28 px-2 py-1"
               />
             ) : (
               block.nonce
@@ -659,14 +642,14 @@ function BlockCard({
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
-          <dt className="text-slate-500">Hash:</dt>
-          <dd className="flex flex-1 items-center gap-2 text-slate-400">
+          <dt className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Hash:</dt>
+          <dd className="flex flex-1 items-center gap-2 text-[var(--hud-accent)]">
             {editing ? (
               <input
                 type="text"
                 value={editHash}
                 onChange={(e) => setEditHash(e.target.value)}
-                className="flex-1 min-w-0 rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-slate-100"
+                className="hud-input flex-1 min-w-0 px-2 py-1 font-mono"
               />
             ) : (
               <span
@@ -677,7 +660,7 @@ function BlockCard({
               >
                 {showFullHashes ? block.hash : hashPreview(block.hash)}
                 {hoveredHash === "hash" && !showFullHashes && (
-                  <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-slate-600 bg-slate-800 px-2 py-1.5 font-mono text-xs text-slate-200 shadow-lg">
+                  <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-[var(--hud-border)] bg-[var(--hud-panel)] px-2 py-1.5 font-mono text-xs text-[var(--hud-text)] shadow-lg">
                     {block.hash}
                   </span>
                 )}
@@ -687,20 +670,17 @@ function BlockCard({
         </div>
         {!editing && (
           <div className="flex gap-2 pt-1">
-            <button
-              onClick={startEditing}
-              className="rounded bg-slate-600 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-500"
-            >
+            <button onClick={startEditing} className="hud-btn px-3 py-1.5 text-xs">
               Edit all fields
             </button>
           </div>
         )}
         {editing && (
           <div className="flex gap-2 pt-1">
-            <button onClick={saveEdit} className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500">
+            <button onClick={saveEdit} className="hud-btn border-[var(--hud-accent)] bg-[var(--hud-panel-hover)] px-3 py-1.5 text-xs text-[var(--hud-accent-bright)]">
               Save
             </button>
-            <button onClick={cancelEdit} className="rounded bg-slate-600 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-500">
+            <button onClick={cancelEdit} className="hud-btn px-3 py-1.5 text-xs">
               Cancel
             </button>
           </div>
@@ -709,21 +689,21 @@ function BlockCard({
           const recalculatedHash = Block.fromBlockData(block).calculateHash();
           const mismatch = recalculatedHash !== block.hash;
           return (
-            <div className="mt-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
-              <p className="font-medium text-amber-400">One or more fields were changed</p>
-              <p className="mt-1 text-slate-400">
+            <div className="mt-3 border border-[var(--hud-warn)]/50 bg-[var(--hud-warn)]/10 px-3 py-2 text-sm">
+              <p className="font-medium uppercase tracking-wider text-[var(--hud-warn)]">One or more fields were changed</p>
+              <p className="mt-1 text-[var(--hud-text-muted)]">
                 Hash is computed from index + previousHash + timestamp + data + nonce. Changing any of these, or the hash itself,
                 can make the stored hash no longer match the recalculated hash.
               </p>
               <div className="mt-2 grid gap-1 font-mono text-xs">
-                <span className="text-slate-500">Stored hash:</span>{" "}
-                <span className="break-all text-slate-300">{showFullHashes ? block.hash : hashPreview(block.hash)}</span>
-                <span className="mt-1 text-slate-500">Hash recalculated from current content:</span>{" "}
-                <span className="break-all text-amber-300">
+                <span className="text-[var(--hud-text-muted)]">Stored hash:</span>{" "}
+                <span className="break-all text-[var(--hud-text)]">{showFullHashes ? block.hash : hashPreview(block.hash)}</span>
+                <span className="mt-1 text-[var(--hud-text-muted)]">Hash recalculated from current content:</span>{" "}
+                <span className="break-all text-[var(--hud-warn)]">
                   {showFullHashes ? recalculatedHash : hashPreview(recalculatedHash)}
                 </span>
                 {mismatch && (
-                  <span className="mt-1 block text-amber-400">Mismatch → chain invalid</span>
+                  <span className="mt-1 block text-[var(--hud-invalid)]">Mismatch → chain invalid</span>
                 )}
               </div>
             </div>

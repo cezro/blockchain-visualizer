@@ -1,26 +1,94 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --hud-bg: #0f1318;
+  --hud-frame: #1a1e24;
+  --hud-panel: #252a33;
+  --hud-panel-hover: #2d333b;
+  --hud-border: #3d4552;
+  --hud-text: #e6edf3;
+  --hud-text-muted: #8b949e;
+  --hud-accent: #9ba387;
+  --hud-accent-bright: #b5c49a;
+  --hud-valid: #7a9b6e;
+  --hud-invalid: #c75c5c;
+  --hud-warn: #c9a227;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--hud-bg);
+  --color-foreground: var(--hud-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+body {
+  background: var(--hud-bg);
+  color: var(--hud-text);
+  font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+/* Angular / HUD panel with left accent strip */
+.hud-panel {
+  background: var(--hud-panel);
+  border: 2px solid var(--hud-border);
+  border-left-width: 4px;
+  border-left-color: var(--hud-accent);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%, 0 0);
+}
+
+.hud-panel-invalid {
+  border-left-color: var(--hud-invalid);
+}
+
+.hud-panel-valid {
+  border-left-color: var(--hud-valid);
+}
+
+/* Section container – same style, full border */
+.hud-section {
+  background: var(--hud-panel);
+  border: 2px solid var(--hud-border);
+  border-left-width: 4px;
+  border-left-color: var(--hud-accent);
+}
+
+/* Angular button / tab style */
+.hud-btn {
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-border);
+  color: var(--hud-text);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.hud-btn:hover:not(:disabled) {
+  background: var(--hud-panel-hover);
+  border-color: var(--hud-accent);
+  color: var(--hud-accent-bright);
+}
+
+.hud-btn-active {
+  background: var(--hud-panel-hover);
+  border-color: var(--hud-accent);
+  color: var(--hud-accent-bright);
+}
+
+/* Inputs */
+.hud-input {
+  background: var(--hud-frame);
+  border: 1px solid var(--hud-border);
+  color: var(--hud-text);
+}
+
+.hud-input::placeholder {
+  color: var(--hud-text-muted);
+}
+
+.hud-input:focus {
+  outline: none;
+  border-color: var(--hud-accent);
+  box-shadow: 0 0 0 1px var(--hud-accent);
 }
