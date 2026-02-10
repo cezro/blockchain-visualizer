@@ -1,9 +1,20 @@
 "use client";
 
+import dynamic from "next/dynamic";
+import { Maximize2, Minimize2 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Block, isChainValid } from "@/lib/blockchain";
 import type { BlockData, DifficultyLevel } from "@/lib/blockchain";
 import { HASH_PREVIEW_LEN, MAX_DIFFICULTY, MINING_BATCH_SIZE } from "@/lib/blockchain/config";
+
+const BlockChain3D = dynamic(() => import("@/app/BlockChain3D").then((m) => ({ default: m.BlockChain3D })), {
+  ssr: false,
+  loading: () => (
+    <div className="flex h-[480px] w-full items-center justify-center rounded-xl border border-slate-700 bg-slate-950 text-slate-500">
+      Loading 3D view…
+    </div>
+  ),
+});
 
 function formatTime(ms: number): string {
   if (ms < 1000) return `${ms}ms`;
@@ -27,7 +38,9 @@ export default function Home() {
   const [blockDataInput, setBlockDataInput] = useState("Alice pays Bob 10");
   const [isMining, setIsMining] = useState(false);
   const [miningTimeMs, setMiningTimeMs] = useState<number | null>(null);
-  const [view, setView] = useState<"chain" | "ledger">("chain");
+  const [view, setView] = useState<"chain" | "ledger" | "3d">("chain");
+  const [selected3DBlock, setSelected3DBlock] = useState<number | null>(null);
+  const [is3DFullscreen, setIs3DFullscreen] = useState(false);
   const [showFullHashes, setShowFullHashes] = useState(false);
   const [sortBy, setSortBy] = useState<"index" | "timestamp" | "nonce">("index");
   const [filterBy, setFilterBy] = useState<"all" | "valid" | "invalid">("all");
@@ -88,10 +101,10 @@ export default function Home() {
     };
   }, []);
 
-  const handleEditBlock = useCallback((index: number, newData: string) => {
+  const handleEditBlock = useCallback((index: number, updates: Partial<Omit<BlockData, "index">>) => {
     setChain((prev) =>
       prev.map((b) =>
-        b.index === index ? { ...b, data: newData } : b
+        b.index === index ? { ...b, ...updates } : b
       )
     );
   }, []);
@@ -146,8 +159,40 @@ export default function Home() {
     setMiningTimeMs(null);
   }, [difficulty]);
 
+  useEffect(() => {
+    if (!is3DFullscreen) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIs3DFullscreen(false);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [is3DFullscreen]);
+
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-(--font-geist-sans)">
+    <>
+      {is3DFullscreen && (
+        <div className="fixed inset-0 z-50 flex flex-col bg-slate-950">
+          <div className="absolute right-4 top-4 z-10">
+            <button
+              type="button"
+              onClick={() => setIs3DFullscreen(false)}
+              title="Exit fullscreen"
+              className="rounded-lg border border-slate-600 bg-slate-800/90 p-2 text-slate-200 shadow-lg hover:bg-slate-700 hover:text-white"
+            >
+              <Minimize2 className="h-5 w-5" aria-hidden />
+            </button>
+          </div>
+          <div className="h-full w-full min-h-0">
+            <BlockChain3D
+              chain={chain}
+              selectedIndex={selected3DBlock}
+              onSelectBlock={setSelected3DBlock}
+              fullscreen
+            />
+          </div>
+        </div>
+      )}
+      <div className="min-h-screen bg-slate-950 text-slate-100 font-(--font-geist-sans)">
       <div className="mx-auto max-w-5xl px-4 py-8">
         <header className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-emerald-400">
@@ -273,6 +318,14 @@ export default function Home() {
             >
               Transaction ledger
             </button>
+            <button
+              onClick={() => setView("3d")}
+              className={`rounded-lg px-3 py-1.5 text-sm font-medium ${
+                view === "3d" ? "bg-slate-700 text-white" : "text-slate-400 hover:text-slate-200"
+              }`}
+            >
+              3D view
+            </button>
           </div>
           <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-400">
             <input
@@ -358,6 +411,27 @@ export default function Home() {
               ))}
             </ul>
           </section>
+        ) : view === "3d" ? (
+          <section>
+            <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-slate-500">Drag to rotate, scroll to zoom. Click a block to see details.</p>
+              <button
+                type="button"
+                onClick={() => setIs3DFullscreen(true)}
+                title="Fullscreen"
+                className="rounded-lg border border-slate-600 bg-slate-800/80 p-1.5 text-slate-300 hover:bg-slate-700 hover:text-white"
+              >
+                <Maximize2 className="h-4 w-4" aria-hidden />
+              </button>
+            </div>
+            {!is3DFullscreen && (
+              <BlockChain3D
+                chain={chain}
+                selectedIndex={selected3DBlock}
+                onSelectBlock={setSelected3DBlock}
+              />
+            )}
+          </section>
         ) : (
           <>
             {/* Block chain */}
@@ -399,6 +473,7 @@ export default function Home() {
         )}
       </div>
     </div>
+    </>
   );
 }
 
@@ -411,22 +486,50 @@ function BlockCard({
 }: {
   block: BlockData;
   previousHash: string | null;
-  onEdit: (index: number, newData: string) => void;
+  onEdit: (index: number, updates: Partial<Omit<BlockData, "index">>) => void;
   showFullHashes: boolean;
   layout?: "list" | "grid" | "compact";
 }) {
   const [editing, setEditing] = useState(false);
-  const [editValue, setEditValue] = useState(block.data);
+  const [editData, setEditData] = useState(block.data);
+  const [editTimestamp, setEditTimestamp] = useState(block.timestamp);
+  const [editPreviousHash, setEditPreviousHash] = useState(block.previousHash);
+  const [editNonce, setEditNonce] = useState(block.nonce);
+  const [editHash, setEditHash] = useState(block.hash);
   const [hoveredHash, setHoveredHash] = useState<"prev" | "hash" | null>(null);
   const linkValid = previousHash === null || block.previousHash === previousHash;
   const hashMismatch = Block.fromBlockData(block).calculateHash() !== block.hash;
 
+  const startEditing = () => {
+    setEditData(block.data);
+    setEditTimestamp(block.timestamp);
+    setEditPreviousHash(block.previousHash);
+    setEditNonce(block.nonce);
+    setEditHash(block.hash);
+    setEditing(true);
+  };
+
   const saveEdit = () => {
-    if (editValue.trim() !== "" && editValue !== block.data) {
-      onEdit(block.index, editValue.trim());
-    }
+    const ts = Number(editTimestamp);
+    const nonceNum = Math.floor(Number(editNonce));
+    if (!Number.isFinite(ts) || !Number.isFinite(nonceNum) || nonceNum < 0) return;
+    onEdit(block.index, {
+      data: editData.trim(),
+      timestamp: ts,
+      previousHash: editPreviousHash,
+      nonce: nonceNum,
+      hash: editHash,
+    });
     setEditing(false);
-    setEditValue(block.data);
+  };
+
+  const cancelEdit = () => {
+    setEditing(false);
+    setEditData(block.data);
+    setEditTimestamp(block.timestamp);
+    setEditPreviousHash(block.previousHash);
+    setEditNonce(block.nonce);
+    setEditHash(block.hash);
   };
 
   const isCompact = layout === "compact";
@@ -441,13 +544,13 @@ function BlockCard({
         <span className={isCompact ? "text-sm font-semibold text-emerald-400" : "text-lg font-semibold text-emerald-400"}>
           Block {block.index}
         </span>
-        {previousHash !== null && (
+        {(previousHash !== null || hashMismatch) && (
           <span
             className={`flex items-center gap-1 text-xs ${
-              linkValid ? "text-emerald-400" : "text-amber-400"
+              hashMismatch ? "text-red-400" : linkValid ? "text-emerald-400" : "text-amber-400"
             }`}
           >
-            {linkValid ? "✓ Link OK" : "✗ Link broken"}
+            {hashMismatch ? "✗ Content invalid" : linkValid ? "✓ Link OK" : "✗ Link broken"}
           </span>
         )}
       </div>
@@ -459,19 +562,19 @@ function BlockCard({
               <span className="flex items-center gap-1">
                 <input
                   type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
+                  value={editData}
+                  onChange={(e) => setEditData(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && saveEdit()}
                   className="w-32 rounded border border-slate-600 bg-slate-900 px-1.5 py-0.5 text-slate-100"
                   autoFocus
                 />
                 <button onClick={saveEdit} className="text-emerald-400 hover:underline">Save</button>
-                <button onClick={() => { setEditing(false); setEditValue(block.data); }} className="text-slate-500 hover:underline">Cancel</button>
+                <button onClick={cancelEdit} className="text-slate-500 hover:underline">Cancel</button>
               </span>
             ) : (
               <>
                 {block.data}
-                <button onClick={() => setEditing(true)} className="ml-1 text-slate-500 hover:text-emerald-400">Edit</button>
+                <button onClick={startEditing} className="ml-1 text-slate-500 hover:text-emerald-400">Edit</button>
               </>
             )}
           </span>
@@ -484,102 +587,138 @@ function BlockCard({
       <dl className="grid gap-2 font-mono text-sm">
         <div className="flex flex-wrap gap-2">
           <dt className="text-slate-500">Timestamp:</dt>
-          <dd className="text-slate-300">
-            {new Date(block.timestamp).toISOString().replace("T", " ").replace("Z", " UTC")}
+          <dd className="flex flex-1 items-center gap-2 text-slate-300">
+            {editing ? (
+              <input
+                type="number"
+                value={editTimestamp}
+                onChange={(e) => { const v = e.target.valueAsNumber; setEditTimestamp(Number.isFinite(v) ? v : block.timestamp); }}
+                className="w-40 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
+              />
+            ) : (
+              new Date(block.timestamp).toISOString().replace("T", " ").replace("Z", " UTC")
+            )}
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
           <dt className="text-slate-500">Data:</dt>
           <dd className="flex flex-1 items-center gap-2 text-slate-300">
             {editing ? (
-              <>
-                <input
-                  type="text"
-                  value={editValue}
-                  onChange={(e) => setEditValue(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && saveEdit()}
-                  className="flex-1 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
-                  autoFocus
-                />
-                <button
-                  onClick={saveEdit}
-                  className="rounded bg-emerald-600 px-2 py-1 text-xs text-white hover:bg-emerald-500"
-                >
-                  Save
-                </button>
-                <button
-                  onClick={() => {
-                    setEditing(false);
-                    setEditValue(block.data);
-                  }}
-                  className="rounded bg-slate-600 px-2 py-1 text-xs hover:bg-slate-500"
-                >
-                  Cancel
-                </button>
-              </>
+              <input
+                type="text"
+                value={editData}
+                onChange={(e) => setEditData(e.target.value)}
+                className="flex-1 min-w-0 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
+              />
             ) : (
-              <>
-                {block.data}
-                <button
-                  onClick={() => setEditing(true)}
-                  className="text-xs text-slate-500 underline hover:text-emerald-400"
-                >
-                  Edit
-                </button>
-              </>
+              block.data
             )}
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
           <dt className="text-slate-500">Previous hash:</dt>
-          <dd
-            className="relative inline-block break-all font-mono text-sm text-slate-400"
-            title={showFullHashes ? undefined : block.previousHash}
-            onMouseEnter={() => setHoveredHash("prev")}
-            onMouseLeave={() => setHoveredHash(null)}
-          >
-            {showFullHashes ? block.previousHash : hashPreview(block.previousHash)}
-            {hoveredHash === "prev" && !showFullHashes && (
-              <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-slate-600 bg-slate-800 px-2 py-1.5 font-mono text-xs text-slate-200 shadow-lg">
-                {block.previousHash}
+          <dd className="flex flex-1 items-center gap-2 text-slate-400">
+            {editing ? (
+              <input
+                type="text"
+                value={editPreviousHash}
+                onChange={(e) => setEditPreviousHash(e.target.value)}
+                className="flex-1 min-w-0 rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-slate-100"
+              />
+            ) : (
+              <span
+                className="relative inline-block break-all"
+                title={showFullHashes ? undefined : block.previousHash}
+                onMouseEnter={() => setHoveredHash("prev")}
+                onMouseLeave={() => setHoveredHash(null)}
+              >
+                {showFullHashes ? block.previousHash : hashPreview(block.previousHash)}
+                {hoveredHash === "prev" && !showFullHashes && (
+                  <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-slate-600 bg-slate-800 px-2 py-1.5 font-mono text-xs text-slate-200 shadow-lg">
+                    {block.previousHash}
+                  </span>
+                )}
               </span>
             )}
           </dd>
         </div>
         <div className="flex flex-wrap gap-2">
           <dt className="text-slate-500">Nonce:</dt>
-          <dd className="text-slate-300">{block.nonce}</dd>
+          <dd className="flex flex-1 items-center gap-2 text-slate-300">
+            {editing ? (
+              <input
+                type="number"
+                min={0}
+                value={editNonce}
+                onChange={(e) => { const v = e.target.valueAsNumber; setEditNonce(Number.isFinite(v) && v >= 0 ? Math.floor(v) : block.nonce); }}
+                className="w-28 rounded border border-slate-600 bg-slate-900 px-2 py-1 text-slate-100"
+              />
+            ) : (
+              block.nonce
+            )}
+          </dd>
         </div>
         <div className="flex flex-wrap gap-2">
           <dt className="text-slate-500">Hash:</dt>
-          <dd
-            className="relative inline-block break-all font-mono text-sm text-slate-400"
-            title={showFullHashes ? undefined : block.hash}
-            onMouseEnter={() => setHoveredHash("hash")}
-            onMouseLeave={() => setHoveredHash(null)}
-          >
-            {showFullHashes ? block.hash : hashPreview(block.hash)}
-            {hoveredHash === "hash" && !showFullHashes && (
-              <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-slate-600 bg-slate-800 px-2 py-1.5 font-mono text-xs text-slate-200 shadow-lg">
-                {block.hash}
+          <dd className="flex flex-1 items-center gap-2 text-slate-400">
+            {editing ? (
+              <input
+                type="text"
+                value={editHash}
+                onChange={(e) => setEditHash(e.target.value)}
+                className="flex-1 min-w-0 rounded border border-slate-600 bg-slate-900 px-2 py-1 font-mono text-slate-100"
+              />
+            ) : (
+              <span
+                className="relative inline-block break-all"
+                title={showFullHashes ? undefined : block.hash}
+                onMouseEnter={() => setHoveredHash("hash")}
+                onMouseLeave={() => setHoveredHash(null)}
+              >
+                {showFullHashes ? block.hash : hashPreview(block.hash)}
+                {hoveredHash === "hash" && !showFullHashes && (
+                  <span className="absolute left-0 top-full z-10 mt-1 max-w-sm break-all rounded border border-slate-600 bg-slate-800 px-2 py-1.5 font-mono text-xs text-slate-200 shadow-lg">
+                    {block.hash}
+                  </span>
+                )}
               </span>
             )}
           </dd>
         </div>
+        {!editing && (
+          <div className="flex gap-2 pt-1">
+            <button
+              onClick={startEditing}
+              className="rounded bg-slate-600 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-500"
+            >
+              Edit all fields
+            </button>
+          </div>
+        )}
+        {editing && (
+          <div className="flex gap-2 pt-1">
+            <button onClick={saveEdit} className="rounded bg-emerald-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-emerald-500">
+              Save
+            </button>
+            <button onClick={cancelEdit} className="rounded bg-slate-600 px-3 py-1.5 text-xs font-medium text-slate-200 hover:bg-slate-500">
+              Cancel
+            </button>
+          </div>
+        )}
         {hashMismatch && (() => {
           const recalculatedHash = Block.fromBlockData(block).calculateHash();
           const mismatch = recalculatedHash !== block.hash;
           return (
             <div className="mt-3 rounded-lg border border-amber-500/50 bg-amber-500/10 px-3 py-2 text-sm">
-              <p className="font-medium text-amber-400">Block content was changed</p>
+              <p className="font-medium text-amber-400">One or more fields were changed</p>
               <p className="mt-1 text-slate-400">
-                Hash is computed from index + previousHash + timestamp + data + nonce. You changed the data, so the
-                stored hash no longer matches.
+                Hash is computed from index + previousHash + timestamp + data + nonce. Changing any of these, or the hash itself,
+                can make the stored hash no longer match the recalculated hash.
               </p>
               <div className="mt-2 grid gap-1 font-mono text-xs">
-                <span className="text-slate-500">Stored hash (unchanged):</span>{" "}
+                <span className="text-slate-500">Stored hash:</span>{" "}
                 <span className="break-all text-slate-300">{showFullHashes ? block.hash : hashPreview(block.hash)}</span>
-                <span className="mt-1 text-slate-500">Hash if recalculated from current content:</span>{" "}
+                <span className="mt-1 text-slate-500">Hash recalculated from current content:</span>{" "}
                 <span className="break-all text-amber-300">
                   {showFullHashes ? recalculatedHash : hashPreview(recalculatedHash)}
                 </span>
