@@ -13,6 +13,10 @@
   --hud-valid: #7a9b6e;
   --hud-invalid: #c75c5c;
   --hud-warn: #c9a227;
+  /* FUI / tactical HUD: crisp lines and grid */
+  --hud-line: rgba(255, 255, 255, 0.85);
+  --hud-grid: rgba(255, 255, 255, 0.12);
+  --hud-grid-size: 28px;
 }
 
 @theme inline {
@@ -91,4 +95,72 @@ body {
   outline: none;
   border-color: var(--hud-accent);
   box-shadow: 0 0 0 1px var(--hud-accent);
+}
+
+/* --- FUI / Tactical HUD (grid, frame, angular header) --- */
+
+/* Grid background with crosshairs at intersections */
+.hud-grid-bg {
+  --grid: var(--hud-grid-size);
+  background-color: var(--hud-bg);
+  background-image:
+    linear-gradient(to right, var(--hud-grid) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--hud-grid) 1px, transparent 1px),
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 28 28'%3E%3Cpath d='M14 10v8M10 14h8' stroke='rgba(255,255,255,0.25)' stroke-width='1' fill='none'/%3E%3C/svg%3E");
+  background-size: var(--grid) var(--grid), var(--grid) var(--grid), var(--grid) var(--grid);
+  background-position: 0 0, 0 0, 0 0;
+}
+
+/* Outer frame: thin crisp border with dashed segments on sides (FUI style) */
+.hud-frame-border {
+  border: 1px solid var(--hud-line);
+  position: relative;
+}
+.hud-frame-border::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border: 1px dashed var(--hud-line);
+  margin: 2px;
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+/* Angular / trapezoidal header bar (e.g. FILE-5 style) */
+.hud-header-angular {
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 12px 100%);
+  background: var(--hud-panel);
+  border: 1px solid var(--hud-line);
+  border-bottom: none;
+}
+
+/* Diagonal stripes corner accent (bottom-left triangle) */
+.hud-corner-stripes {
+  position: relative;
+  overflow: hidden;
+}
+.hud-corner-stripes::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 120px;
+  height: 120px;
+  background: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 4px,
+    var(--hud-grid) 4px,
+    var(--hud-grid) 6px
+  );
+  clip-path: polygon(0 100%, 0 0, 100% 100%);
+  pointer-events: none;
+}
+
+/* Monospace uppercase labels (FUI readout style) */
+.hud-readout {
+  font-family: var(--font-geist-mono), ui-monospace, monospace;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }

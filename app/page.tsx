@@ -47,9 +47,30 @@ export default function Home() {
   const [filterQuery, setFilterQuery] = useState("");
   const [chainLayout, setChainLayout] = useState<"list" | "grid" | "compact">("list");
   const [autoMineProgress, setAutoMineProgress] = useState<number | null>(null);
+  const [autoMineMessages, setAutoMineMessages] = useState<string[]>([]);
+  const [editing3DBlockIndex, setEditing3DBlockIndex] = useState<number | null>(null);
+  const [modalData, setModalData] = useState("");
+  const [modalTimestamp, setModalTimestamp] = useState(0);
+  const [modalPreviousHash, setModalPreviousHash] = useState("");
+  const [modalNonce, setModalNonce] = useState(0);
+  const [modalHash, setModalHash] = useState("");
   const rafIdRef = useRef<number | null>(null);
+  const chainRef = useRef<BlockData[]>(chain);
+  chainRef.current = chain;
 
   const valid = isChainValid(chain);
+
+  useEffect(() => {
+    if (editing3DBlockIndex == null) return;
+    const block = chain.find((b) => b.index === editing3DBlockIndex);
+    if (block) {
+      setModalData(block.data);
+      setModalTimestamp(block.timestamp);
+      setModalPreviousHash(block.previousHash);
+      setModalNonce(block.nonce);
+      setModalHash(block.hash);
+    }
+  }, [editing3DBlockIndex, chain]);
 
   const filteredAndSortedChain = useMemo(() => {
     const validBlock = (b: BlockData) => Block.fromBlockData(b).calculateHash() === b.hash;
@@ -127,25 +148,34 @@ export default function Home() {
   }, []);
 
   const autoMine = useCallback(() => {
+    setAutoMineMessages([]);
     const count = 5;
     let step = 0;
     const addNext = () => {
       if (step >= count) {
         setAutoMineProgress(null);
+        setAutoMineMessages((prev) =>
+          prev.length > 0 ? [...prev, `Done — ${count} blocks mined.`] : prev
+        );
         return;
       }
-      setChain((prev) => {
-        const last = prev[prev.length - 1];
-        const prevHash = last?.hash ?? "0";
-        const block = new Block(
-          prev.length,
-          Date.now(),
-          `Transaction ${prev.length}`,
-          prevHash
-        );
-        block.mineBlock(difficulty);
-        return [...prev, block.toBlockData()];
-      });
+      const prev = chainRef.current;
+      const last = prev[prev.length - 1];
+      const prevHash = last?.hash ?? "0";
+      const block = new Block(
+        prev.length,
+        Date.now(),
+        `Transaction ${prev.length}`,
+        prevHash
+      );
+      const t0 = performance.now();
+      block.mineBlock(difficulty);
+      const elapsed = Math.round(performance.now() - t0);
+      setAutoMineMessages((msgs) => [
+        ...msgs.slice(-4),
+        `Block ${block.index} mined in ${formatTime(elapsed)}`,
+      ]);
+      setChain([...prev, block.toBlockData()]);
       setAutoMineProgress(step + 1);
       step += 1;
       setTimeout(addNext, 0);
@@ -168,10 +198,27 @@ export default function Home() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [is3DFullscreen]);
 
+  useEffect(() => {
+    if (editing3DBlockIndex == null) return;
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setEditing3DBlockIndex(null);
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [editing3DBlockIndex]);
+
+  useEffect(() => {
+    const last = autoMineMessages[autoMineMessages.length - 1];
+    if (last?.startsWith("Done")) {
+      const t = setTimeout(() => setAutoMineMessages([]), 4000);
+      return () => clearTimeout(t);
+    }
+  }, [autoMineMessages]);
+
   return (
     <>
       {is3DFullscreen && (
-        <div className="fixed inset-0 z-50 flex flex-col bg-[var(--hud-bg)]">
+        <div className="fixed inset-0 z-50 flex flex-col hud-grid-bg">
           <div className="absolute right-4 top-4 z-10">
             <button
               type="button"
@@ -188,17 +235,134 @@ export default function Home() {
               selectedIndex={selected3DBlock}
               onSelectBlock={setSelected3DBlock}
               fullscreen
+              showFullHashes={showFullHashes}
+              onRequestEdit={setEditing3DBlockIndex}
             />
           </div>
         </div>
       )}
-      <div className="min-h-screen bg-[var(--hud-bg)] text-[var(--hud-text)] font-(--font-geist-sans)">
+
+      {/* Edit block modal (from 3D view) */}
+      {editing3DBlockIndex != null && (() => {
+        const block = chain.find((b) => b.index === editing3DBlockIndex);
+        if (!block) return null;
+        const handleModalSave = () => {
+          const ts = Number(modalTimestamp);
+          const nonceNum = Math.floor(Number(modalNonce));
+          if (!Number.isFinite(ts) || !Number.isFinite(nonceNum) || nonceNum < 0) return;
+          handleEditBlock(editing3DBlockIndex, {
+            data: modalData.trim(),
+            timestamp: ts,
+            previousHash: modalPreviousHash,
+            nonce: nonceNum,
+            hash: modalHash,
+          });
+          setEditing3DBlockIndex(null);
+        };
+        return (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/70 p-4"
+            onClick={() => setEditing3DBlockIndex(null)}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-block-modal-title"
+          >
+            <div
+              className="hud-section w-full max-w-lg rounded border-[var(--hud-line)] p-6 shadow-xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 id="edit-block-modal-title" className="hud-readout mb-4 text-lg tracking-widest text-[var(--hud-accent-bright)]">
+                Edit Block {block.index}
+              </h2>
+              <dl className="grid gap-3 font-mono text-sm">
+                <div>
+                  <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Data</dt>
+                  <dd>
+                    <input
+                      type="text"
+                      value={modalData}
+                      onChange={(e) => setModalData(e.target.value)}
+                      className="hud-input w-full px-3 py-2"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Timestamp</dt>
+                  <dd>
+                    <input
+                      type="number"
+                      value={modalTimestamp}
+                      onChange={(e) => {
+                        const v = e.target.valueAsNumber;
+                        setModalTimestamp(Number.isFinite(v) ? v : block.timestamp);
+                      }}
+                      className="hud-input w-full px-3 py-2"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Previous hash</dt>
+                  <dd>
+                    <input
+                      type="text"
+                      value={modalPreviousHash}
+                      onChange={(e) => setModalPreviousHash(e.target.value)}
+                      className="hud-input w-full px-3 py-2 font-mono text-xs"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Nonce</dt>
+                  <dd>
+                    <input
+                      type="number"
+                      min={0}
+                      value={modalNonce}
+                      onChange={(e) => {
+                        const v = e.target.valueAsNumber;
+                        setModalNonce(Number.isFinite(v) && v >= 0 ? Math.floor(v) : block.nonce);
+                      }}
+                      className="hud-input w-full px-3 py-2"
+                    />
+                  </dd>
+                </div>
+                <div>
+                  <dt className="mb-1 text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Hash</dt>
+                  <dd>
+                    <input
+                      type="text"
+                      value={modalHash}
+                      onChange={(e) => setModalHash(e.target.value)}
+                      className="hud-input w-full px-3 py-2 font-mono text-xs"
+                    />
+                  </dd>
+                </div>
+              </dl>
+              <div className="mt-5 flex gap-2">
+                <button
+                  type="button"
+                  onClick={handleModalSave}
+                  className="hud-btn border-[var(--hud-accent)] bg-[var(--hud-panel-hover)] px-4 py-2 text-sm text-[var(--hud-accent-bright)]"
+                >
+                  Save
+                </button>
+                <button type="button" onClick={() => setEditing3DBlockIndex(null)} className="hud-btn px-4 py-2 text-sm">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      <div className="min-h-screen hud-grid-bg hud-corner-stripes text-[var(--hud-text)] font-(--font-geist-sans)">
       <div className="mx-auto max-w-5xl px-4 py-8">
-        <header className="hud-section mb-6 px-5 py-4">
-          <h1 className="text-2xl font-bold uppercase tracking-widest text-[var(--hud-accent-bright)]">
+        <div className="hud-frame-border bg-[var(--hud-bg)]/95 backdrop-blur-sm px-6 py-8">
+        <header className="hud-header-angular mb-6 px-6 py-4 -mx-1">
+          <h1 className="hud-readout text-xl tracking-widest text-[var(--hud-line)]">
             Blockchain Visualizer
           </h1>
-          <p className="mt-1 text-sm text-[var(--hud-text-muted)] uppercase tracking-wider">
+          <p className="mt-1 text-xs text-[var(--hud-text-muted)] uppercase tracking-widest">
             Mine blocks · Validate chain · Tamper demo
           </p>
         </header>
@@ -215,7 +379,7 @@ export default function Home() {
 
         {/* Difficulty: 1–4 buttons + optional 5–10 input */}
         <section className="hud-section mb-6 flex flex-wrap items-center gap-3 px-5 py-4">
-          <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Difficulty (leading zeros):</span>
+          <span className="hud-readout text-xs text-[var(--hud-text-muted)]">Difficulty (leading zeros):</span>
           <div className="flex gap-1">
             {([1, 2, 3, 4] as const).map((d) => (
               <button
@@ -247,7 +411,7 @@ export default function Home() {
         {/* Mining controls */}
         <section className="hud-section mb-6 flex flex-wrap items-end gap-3 px-5 py-4">
           <label className="flex flex-1 min-w-[200px] flex-col gap-1">
-            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Block data</span>
+            <span className="hud-readout text-xs text-[var(--hud-text-muted)]">Block data</span>
             <input
               type="text"
               value={blockDataInput}
@@ -284,6 +448,18 @@ export default function Home() {
               ? `Auto-mining ${autoMineProgress}/5...`
               : "Auto-mine 5 blocks"}
           </button>
+          {autoMineMessages.length > 0 && (
+            <div className="flex flex-col gap-0.5 rounded border border-[var(--hud-border)] bg-[var(--hud-frame)] px-3 py-2 text-xs">
+              {autoMineMessages.map((msg, i) => (
+                <span
+                  key={i}
+                  className={msg.startsWith("Done") ? "font-semibold text-[var(--hud-valid)]" : "text-[var(--hud-text-muted)]"}
+                >
+                  {msg}
+                </span>
+              ))}
+            </div>
+          )}
           <button
             onClick={resetChain}
             className="hud-btn px-4 py-2.5 text-sm text-[var(--hud-text-muted)]"
@@ -328,60 +504,66 @@ export default function Home() {
         {/* Sort, filter, and layout (chain view only) */}
         {view === "chain" && (
           <section className="hud-panel mb-4 flex flex-wrap items-center gap-4 px-4 py-3">
-            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Sort:</span>
-            <div className="flex gap-1">
-              {(["index", "timestamp", "nonce"] as const).map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setSortBy(s)}
-                  className={`hud-btn px-2.5 py-1 text-xs ${sortBy === s ? "hud-btn-active" : ""}`}
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <span className="hud-readout text-xs text-[var(--hud-text-muted)]">Sort:</span>
+              <div className="flex gap-1">
+                {(["index", "timestamp", "nonce"] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setSortBy(s)}
+                    className={`hud-btn px-2.5 py-1 text-xs ${sortBy === s ? "hud-btn-active" : ""}`}
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
             <span className="text-[var(--hud-border)]">|</span>
-            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">Filter:</span>
-            <div className="flex gap-1">
-              {(["all", "valid", "invalid"] as const).map((f) => (
-                <button
-                  key={f}
-                  type="button"
-                  onClick={() => setFilterBy(f)}
-                  className={`hud-btn px-2.5 py-1 text-xs ${filterBy === f ? "hud-btn-active" : ""}`}
-                >
-                  {f}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <span className="hud-readout text-xs text-[var(--hud-text-muted)]">Filter:</span>
+              <div className="flex gap-1">
+                {(["all", "valid", "invalid"] as const).map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => setFilterBy(f)}
+                    className={`hud-btn px-2.5 py-1 text-xs ${filterBy === f ? "hud-btn-active" : ""}`}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
             </div>
             <input
               type="text"
               placeholder="Search block data..."
               value={filterQuery}
               onChange={(e) => setFilterQuery(e.target.value)}
-              className="hud-input w-40 px-2 py-1 text-xs"
+              className="hud-input min-w-40 flex-1 px-2 py-1 text-xs"
             />
             <span className="text-[var(--hud-border)]">|</span>
-            <span className="text-xs uppercase tracking-wider text-[var(--hud-text-muted)]">View:</span>
-            <div className="flex gap-1">
-              {(["list", "grid", "compact"] as const).map((l) => (
-                <button
-                  key={l}
-                  type="button"
-                  onClick={() => setChainLayout(l)}
-                  className={`hud-btn px-2.5 py-1 text-xs ${chainLayout === l ? "hud-btn-active" : ""}`}
-                >
-                  {l}
-                </button>
-              ))}
+            <div className="flex items-center gap-2">
+              <span className="hud-readout text-xs text-[var(--hud-text-muted)]">View:</span>
+              <div className="flex gap-1">
+                {(["list", "grid", "compact"] as const).map((l) => (
+                  <button
+                    key={l}
+                    type="button"
+                    onClick={() => setChainLayout(l)}
+                    className={`hud-btn px-2.5 py-1 text-xs ${chainLayout === l ? "hud-btn-active" : ""}`}
+                  >
+                    {l}
+                  </button>
+                ))}
+              </div>
             </div>
           </section>
         )}
 
         {view === "ledger" ? (
           <section className="hud-section p-5">
-            <h2 className="mb-4 border-b border-[var(--hud-border)] pb-2 text-xs font-semibold uppercase tracking-widest text-[var(--hud-text-muted)]">
+            <h2 className="hud-readout mb-4 border-b border-[var(--hud-border)] pb-2 text-xs tracking-widest text-[var(--hud-text-muted)]">
               Ledger
             </h2>
             <ul className="space-y-1.5 font-mono text-sm text-[var(--hud-text)]">
@@ -411,6 +593,8 @@ export default function Home() {
                   chain={chain}
                   selectedIndex={selected3DBlock}
                   onSelectBlock={setSelected3DBlock}
+                  showFullHashes={showFullHashes}
+                  onRequestEdit={setEditing3DBlockIndex}
                 />
               </div>
             )}
@@ -454,6 +638,7 @@ export default function Home() {
             )}
           </>
         )}
+        </div>
       </div>
     </div>
     </>

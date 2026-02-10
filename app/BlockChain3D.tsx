@@ -13,6 +13,7 @@ import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Html, useCursor } from "@react-three/drei";
 import type { BlockData } from "@/lib/blockchain";
 import { Block } from "@/lib/blockchain";
+import { HASH_PREVIEW_LEN } from "@/lib/blockchain/config";
 
 const BLOCK_SPACING = 2.2;
 const BLOCK_HALF_X = 0.7;
@@ -21,7 +22,10 @@ function getBlockCenterX(index: number, total: number): number {
   return (index - (total - 1) / 2) * BLOCK_SPACING;
 }
 
-const HASH_LABEL_LEN = 8;
+function hashPreview(hash: string, showFull: boolean): string {
+  if (showFull) return hash;
+  return hash.length <= HASH_PREVIEW_LEN ? hash : `${hash.slice(0, HASH_PREVIEW_LEN)}…`;
+}
 
 /** Line from the tail (right side) of block i to the head (left side) of block i+1. Represents the hash linking the chain. */
 function ChainLink({
@@ -31,6 +35,7 @@ function ChainLink({
   valid,
   prevBlockHash,
   nextBlockPrevHash,
+  showFullHashes,
 }: {
   fromIndex: number;
   toIndex: number;
@@ -38,6 +43,7 @@ function ChainLink({
   valid: boolean;
   prevBlockHash: string;
   nextBlockPrevHash: string;
+  showFullHashes: boolean;
 }) {
   const startX = getBlockCenterX(fromIndex, total) + BLOCK_HALF_X;
   const endX = getBlockCenterX(toIndex, total) - BLOCK_HALF_X;
@@ -73,7 +79,7 @@ function ChainLink({
           }`}
         >
           {valid ? (
-            <span title={prevBlockHash}>
+            <span title={showFullHashes ? undefined : prevBlockHash}>
               Hash link ✓<br />
               <span className="text-[#8b949e]">prevHash = hash</span>
             </span>
@@ -81,11 +87,11 @@ function ChainLink({
             <span>
               <span className="font-semibold uppercase">Hash mismatch</span>
               <div className="mt-0.5 grid gap-0.5 text-[9px]">
-                <div className="text-[#8b949e]">
-                  Block {fromIndex} hash: <span className="text-[#e6edf3]">{prevBlockHash.slice(0, HASH_LABEL_LEN)}…</span>
+                <div className={`text-[#8b949e] ${showFullHashes ? "break-all" : ""}`}>
+                  Block {fromIndex} hash: <span className="text-[#e6edf3]">{hashPreview(prevBlockHash, showFullHashes)}</span>
                 </div>
-                <div className="text-[#8b949e]">
-                  Block {toIndex} prevHash: <span className="text-[#c9a227]">{nextBlockPrevHash.slice(0, HASH_LABEL_LEN)}…</span>
+                <div className={`text-[#8b949e] ${showFullHashes ? "break-all" : ""}`}>
+                  Block {toIndex} prevHash: <span className="text-[#c9a227]">{hashPreview(nextBlockPrevHash, showFullHashes)}</span>
                 </div>
                 <div className="text-[#c75c5c]">≠ no link</div>
               </div>
@@ -103,12 +109,16 @@ function BlockMesh({
   total,
   selected,
   onSelect,
+  showFullHashes,
+  onRequestEdit,
 }: {
   block: BlockData;
   index: number;
   total: number;
   selected: boolean;
   onSelect: () => void;
+  showFullHashes: boolean;
+  onRequestEdit?: (index: number) => void;
 }) {
   const meshRef = useRef<Mesh>(null);
   const [hovered, setHovered] = useState(false);
@@ -151,15 +161,27 @@ function BlockMesh({
           position={[0, -0.9, 0]}
           center
           distanceFactor={5}
-          style={{ pointerEvents: "none", maxWidth: 280 }}
+          style={{ maxWidth: 280 }}
         >
           <div className="rounded border border-[#3d4552] bg-[#252a33] p-3 font-mono text-xs text-[#e6edf3] shadow-xl">
             <div className="mb-1 font-semibold uppercase tracking-wider text-[#9ba387]">Block {block.index}</div>
             <div className="space-y-0.5 text-[#8b949e]">
               <div><span className="text-[#8b949e]">Data:</span> {block.data}</div>
               <div><span className="text-[#8b949e]">Nonce:</span> {block.nonce}</div>
-              <div className="break-all"><span className="text-[#8b949e]">Hash:</span> {block.hash.slice(0, 16)}...</div>
+              <div className="break-all"><span className="text-[#8b949e]">Hash:</span> {showFullHashes ? block.hash : `${block.hash.slice(0, HASH_PREVIEW_LEN)}…`}</div>
             </div>
+            {onRequestEdit && (
+              <button
+                type="button"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRequestEdit(block.index);
+                }}
+                className="mt-2 w-full rounded border border-[#3d4552] bg-[#1a1e24] px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-[#9ba387] transition-colors hover:border-[#9ba387] hover:bg-[#252a33]"
+              >
+                Edit
+              </button>
+            )}
           </div>
         </Html>
       )}
@@ -172,11 +194,15 @@ export function BlockChain3D({
   selectedIndex,
   onSelectBlock,
   fullscreen = false,
+  showFullHashes = false,
+  onRequestEdit,
 }: {
   chain: BlockData[];
   selectedIndex: number | null;
   onSelectBlock: (index: number | null) => void;
   fullscreen?: boolean;
+  showFullHashes?: boolean;
+  onRequestEdit?: (index: number) => void;
 }) {
   return (
     <div
@@ -213,6 +239,7 @@ export function BlockChain3D({
                   valid={valid}
                   prevBlockHash={curr.hash}
                   nextBlockPrevHash={next.previousHash}
+                  showFullHashes={showFullHashes}
                 />
               );
             })}
@@ -224,6 +251,8 @@ export function BlockChain3D({
               total={chain.length}
               selected={selectedIndex === block.index}
               onSelect={() => onSelectBlock(selectedIndex === block.index ? null : block.index)}
+              showFullHashes={showFullHashes}
+              onRequestEdit={onRequestEdit}
             />
           ))}
         </group>
