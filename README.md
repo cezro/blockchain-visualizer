@@ -41,7 +41,10 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ## Screenshot
 
-Run the app and try **Mine**, **Edit** (cards or 3D modal), difficulty, and the **3D view** to see the chain and validation update. Add a screenshot or GIF from your own run if you like.
+<img width="2498" height="1365" alt="image" src="https://github.com/user-attachments/assets/e6751380-e41f-4242-b298-723600223cd7" />
+<img width="2498" height="1365" alt="image" src="https://github.com/user-attachments/assets/e7de8a8e-8073-4170-96e5-11d7f9801d8f" />
+<img width="2498" height="1365" alt="image" src="https://github.com/user-attachments/assets/941f7702-9f46-4fc6-9255-c6270cce8c95" />
+
 
 ## Live demo
 
