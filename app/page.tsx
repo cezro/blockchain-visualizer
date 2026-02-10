@@ -49,11 +49,6 @@ export default function Home() {
   const [modalNonce, setModalNonce] = useState(0);
   const [modalHash, setModalHash] = useState("");
   const rafIdRef = useRef<number | null>(null);
-  const chainRef = useRef<BlockData[]>(chain);
-
-  useEffect(() => {
-    chainRef.current = chain;
-  }, [chain]);
 
   const valid = isChainValid(chain);
 
@@ -150,6 +145,7 @@ export default function Home() {
     setAutoMineMessages([]);
     const count = 5;
     let step = 0;
+
     const addNext = () => {
       if (step >= count) {
         setAutoMineProgress(null);
@@ -158,27 +154,35 @@ export default function Home() {
         );
         return;
       }
-      const prev = chainRef.current;
-      const last = prev[prev.length - 1];
-      const prevHash = last?.hash ?? "0";
-      const block = new Block(
-        prev.length,
-        Date.now(),
-        `Transaction ${prev.length}`,
-        prevHash
-      );
+
       const t0 = performance.now();
-      block.mineBlock(difficulty);
-      const elapsed = Math.round(performance.now() - t0);
-      setAutoMineMessages((msgs) => [
-        ...msgs.slice(-4),
-        `Block ${block.index} mined in ${formatTime(elapsed)}`,
-      ]);
-      setChain([...prev, block.toBlockData()]);
-      setAutoMineProgress(step + 1);
+
+      setChain((prev) => {
+        const last = prev[prev.length - 1];
+        const prevHash = last?.hash ?? "0";
+        const block = new Block(
+          prev.length,
+          Date.now(),
+          `Transaction ${prev.length}`,
+          prevHash
+        );
+
+        block.mineBlock(difficulty);
+        const elapsed = Math.round(performance.now() - t0);
+
+        setAutoMineMessages((msgs) => [
+          ...msgs.slice(-4),
+          `Block ${block.index} mined in ${formatTime(elapsed)}`,
+        ]);
+
+        return [...prev, block.toBlockData()];
+      });
+
       step += 1;
+      setAutoMineProgress(step);
       setTimeout(addNext, 0);
     };
+
     setAutoMineProgress(0);
     addNext();
   }, [difficulty]);
